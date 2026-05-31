@@ -48,6 +48,8 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 画面復帰時にvault設定状態を最新化（設定タブでフォルダを選んだ後など）。
+    LaunchedEffect(Unit) { viewModel.onResume() }
     // 新規メッセージで最下部へスクロール。
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)

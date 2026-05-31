@@ -22,16 +22,28 @@ class RoutingLlmProvider @Inject constructor(
     private val settings: LlmSettings,
 ) : LlmProvider {
 
-    @Volatile
     private var onDevice: MediaPipeLlmProvider? = null
+    private var loadedStamp: Long = -1L
 
+    /**
+     * 設定/モデルに応じて実体を返す。モデルが差し替えられた(lastModified変化)場合は
+     * 古いエンジンを閉じて作り直す。複数コルーチンからの同時呼び出しで二重生成しないよう同期する。
+     */
+    @Synchronized
     private fun active(): LlmProvider {
         if (settings.useOnDevice && modelStore.isAvailable()) {
-            return onDevice ?: MediaPipeLlmProvider(
+            val stamp = modelStore.modelFile.lastModified()
+            val cached = onDevice
+            if (cached != null && stamp == loadedStamp) return cached
+            cached?.close()
+            return MediaPipeLlmProvider(
                 context = context,
                 modelPath = modelStore.modelFile.path,
                 fallback = stub,
-            ).also { onDevice = it }
+            ).also {
+                onDevice = it
+                loadedStamp = stamp
+            }
         }
         return stub
     }

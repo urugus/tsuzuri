@@ -74,8 +74,14 @@ class ChatViewModel @Inject constructor(
             val date = LocalDate.now(clock)
             val events = provider.extractEvents(_state.value.messages, date)
             events.forEach { repository.upsertEvent(it) }
+            // 保存後は会話をリセットし、同じ内容の二重保存を防ぐ。
+            val greeting = provider.reply(emptyList())
             _state.update {
-                it.copy(busy = false, notice = "${events.size}件の出来事を $date に保存しました")
+                it.copy(
+                    busy = false,
+                    messages = listOf(ChatMessage(ChatRole.ASSISTANT, greeting)),
+                    notice = "${events.size}件の出来事を $date に保存しました",
+                )
             }
         }
     }
