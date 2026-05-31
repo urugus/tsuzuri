@@ -32,7 +32,9 @@ class DayDetailViewModel @Inject constructor(
     private val provider: LlmProvider,
 ) : ViewModel() {
 
-    val date: LocalDate = LocalDate.parse(requireNotNull(savedStateHandle[ARG_DATE]) as String)
+    // 不正な引数でも落ちないよう防御（通常のナビ遷移では常に妥当なISO日付）。
+    val date: LocalDate = runCatching { LocalDate.parse(savedStateHandle.get<String>(ARG_DATE)) }
+        .getOrElse { LocalDate.now() }
 
     private val _state = MutableStateFlow(DayDetailUiState())
     val state: StateFlow<DayDetailUiState> = _state.asStateFlow()

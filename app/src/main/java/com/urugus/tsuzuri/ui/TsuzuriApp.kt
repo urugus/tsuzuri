@@ -45,25 +45,30 @@ fun TsuzuriApp() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
+    // トップレベル(タブ)以外の画面（日詳細など）では下部ナビを隠す。
+    val isTopLevel = TopDestination.entries.any { it.route == currentDestination?.route }
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                TopDestination.entries.forEach { dest ->
-                    val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            navController.navigate(dest.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (isTopLevel) {
+                NavigationBar {
+                    TopDestination.entries.forEach { dest ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(dest.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(dest.icon, contentDescription = dest.label) },
-                        label = { Text(dest.label) },
-                    )
+                            },
+                            icon = { Icon(dest.icon, contentDescription = dest.label) },
+                            label = { Text(dest.label) },
+                        )
+                    }
                 }
             }
         },
