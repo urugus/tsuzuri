@@ -66,6 +66,7 @@ dependencies {
 
     implementation(libs.androidx.documentfile)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.mediapipe.tasks.genai)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

@@ -1,7 +1,7 @@
 package com.urugus.tsuzuri.di
 
 import com.urugus.tsuzuri.core.llm.LlmProvider
-import com.urugus.tsuzuri.core.llm.StubLlmProvider
+import com.urugus.tsuzuri.core.llm.RoutingLlmProvider
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -21,7 +21,7 @@ object AppModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class LlmModule {
-    /** MVPの既定LLM。後フェーズで実装を差し替える。 */
+    /** 設定とモデルの有無で Stub/オンデバイス を切り替える。 */
     @Binds
-    abstract fun bindLlmProvider(impl: StubLlmProvider): LlmProvider
+    abstract fun bindLlmProvider(impl: RoutingLlmProvider): LlmProvider
 }
