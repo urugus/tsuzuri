@@ -21,9 +21,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.urugus.tsuzuri.feature.chat.ChatScreen
+import com.urugus.tsuzuri.feature.diary.DayDetailScreen
+import com.urugus.tsuzuri.feature.diary.DayDetailViewModel
 import com.urugus.tsuzuri.feature.settings.SettingsScreen
-import com.urugus.tsuzuri.ui.placeholder.PlaceholderScreen
+import com.urugus.tsuzuri.feature.timeline.TimelineScreen
 
 private enum class TopDestination(
     val route: String,
@@ -75,13 +79,18 @@ fun TsuzuriApp() {
                 ChatScreen()
             }
             composable(TopDestination.Timeline.route) {
-                PlaceholderScreen(
-                    title = "ふり返り",
-                    description = "出来事ベースのタイムラインを表示します（Phase 1で実装）。",
+                TimelineScreen(
+                    onOpenDay = { date -> navController.navigate("day/$date") },
                 )
             }
             composable(TopDestination.Settings.route) {
                 SettingsScreen()
+            }
+            composable(
+                route = "day/{${DayDetailViewModel.ARG_DATE}}",
+                arguments = listOf(navArgument(DayDetailViewModel.ARG_DATE) { type = NavType.StringType }),
+            ) {
+                DayDetailScreen(onBack = { navController.popBackStack() })
             }
         }
     }

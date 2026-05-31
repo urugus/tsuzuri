@@ -16,4 +16,7 @@ interface LlmProvider {
 
     /** 会話から、指定日に属する出来事(イベント)を抽出する。 */
     suspend fun extractEvents(history: List<ChatMessage>, date: LocalDate): List<Event>
+
+    /** その日の出来事(イベント)群から、日記の文章を再構成する。 */
+    suspend fun reconstruct(events: List<Event>, date: LocalDate): String
 }

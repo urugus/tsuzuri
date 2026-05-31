@@ -5,6 +5,8 @@ import com.urugus.tsuzuri.core.model.EventSource
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 /**
@@ -45,7 +47,23 @@ class StubLlmProvider @Inject constructor(
                 )
             }
 
+    override suspend fun reconstruct(events: List<Event>, date: LocalDate): String {
+        if (events.isEmpty()) return "$date の記録はまだありません。"
+        val ordered = events.sortedWith(
+            compareBy({ it.time ?: LocalTime.MAX }, { it.createdAt }, { it.id }),
+        )
+        return buildString {
+            append("$date の振り返り\n\n")
+            ordered.forEach { e ->
+                e.time?.let { append(TIME_FORMAT.format(it)).append("　") }
+                append(e.body.ifBlank { e.title })
+                append("\n")
+            }
+        }.trimEnd()
+    }
+
     private companion object {
         const val TITLE_MAX = 40
+        val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }
