@@ -16,17 +16,12 @@ import javax.inject.Inject
  */
 class StubLlmProvider @Inject constructor(
     private val clock: Clock,
+    private val prompts: LlmPromptBuilder,
 ) : LlmProvider {
-
-    private val prompts = listOf(
-        "今日はどんな一日でしたか？印象に残った出来事を教えてください。",
-        "それはいつ頃のことですか？どう感じたかも教えてください。",
-        "他に記録しておきたいことはありますか？",
-    )
 
     override suspend fun reply(history: List<ChatMessage>): String {
         val userTurns = history.count { it.role == ChatRole.USER }
-        return prompts[userTurns.coerceIn(0, prompts.lastIndex)]
+        return prompts.nextQuestion(userTurns)
     }
 
     override suspend fun extractEvents(history: List<ChatMessage>, date: LocalDate): List<Event> =

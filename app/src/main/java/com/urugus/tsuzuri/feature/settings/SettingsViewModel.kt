@@ -3,6 +3,7 @@ package com.urugus.tsuzuri.feature.settings
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.urugus.tsuzuri.core.llm.LlmProviderMode
 import com.urugus.tsuzuri.core.llm.LlmSettings
 import com.urugus.tsuzuri.core.llm.ModelStore
 import com.urugus.tsuzuri.data.vault.VaultManager
@@ -19,9 +20,9 @@ data class SettingsUiState(
     val dayCount: Int = 0,
     val recentDates: List<String> = emptyList(),
     val loading: Boolean = false,
-    // オンデバイスLLM
+    // LLM
     val modelAvailable: Boolean = false,
-    val useOnDevice: Boolean = false,
+    val providerMode: LlmProviderMode = LlmProviderMode.STUB,
     val importingModel: Boolean = false,
     val notice: String? = null,
 )
@@ -65,9 +66,25 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onToggleOnDevice(enabled: Boolean) {
-        llmSettings.useOnDevice = enabled
-        _state.update { it.copy(useOnDevice = enabled) }
+    fun onProviderModeSelected(mode: LlmProviderMode) {
+        val nextMode = when {
+            mode == LlmProviderMode.ON_DEVICE && !modelStore.isAvailable() -> LlmProviderMode.STUB
+            mode == LlmProviderMode.CLOUD -> LlmProviderMode.STUB
+            else -> mode
+        }
+        llmSettings.providerMode = nextMode
+        _state.update {
+            it.copy(
+                providerMode = nextMode,
+                notice = when {
+                    mode == LlmProviderMode.ON_DEVICE && nextMode != mode ->
+                        "先にモデルファイル(.task)を読み込んでください"
+                    mode == LlmProviderMode.CLOUD ->
+                        "クラウドAIは次の実装ステップで有効化します"
+                    else -> it.notice
+                },
+            )
+        }
     }
 
     fun consumeNotice() = _state.update { it.copy(notice = null) }
@@ -87,7 +104,7 @@ class SettingsViewModel @Inject constructor(
                     recentDates = days.takeLast(5).reversed().map { d -> d.toString() },
                     loading = false,
                     modelAvailable = modelStore.isAvailable(),
-                    useOnDevice = llmSettings.useOnDevice,
+                    providerMode = llmSettings.providerMode,
                 )
             }
         }

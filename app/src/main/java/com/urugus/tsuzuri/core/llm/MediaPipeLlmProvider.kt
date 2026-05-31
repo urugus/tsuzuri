@@ -22,6 +22,7 @@ class MediaPipeLlmProvider(
     private val context: Context,
     private val modelPath: String,
     private val fallback: LlmProvider,
+    private val prompts: LlmPromptBuilder,
 ) : LlmProvider {
 
     @Volatile
@@ -40,7 +41,7 @@ class MediaPipeLlmProvider(
         }
 
     override suspend fun reply(history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
-        runCatching { engine().generateResponse(buildChatPrompt(history)) }
+        runCatching { engine().generateResponse(prompts.chatPrompt(history)) }
             .getOrElse { fallback.reply(history) }
     }
 
@@ -50,27 +51,9 @@ class MediaPipeLlmProvider(
     override suspend fun reconstruct(events: List<Event>, date: LocalDate): String =
         withContext(Dispatchers.IO) {
             if (events.isEmpty()) return@withContext fallback.reconstruct(events, date)
-            runCatching { engine().generateResponse(buildReconstructPrompt(events, date)) }
+            runCatching { engine().generateResponse(prompts.reconstructPrompt(events, date)) }
                 .getOrElse { fallback.reconstruct(events, date) }
         }
-
-    private fun buildChatPrompt(history: List<ChatMessage>): String = buildString {
-        append("あなたは日記作成を手伝うアシスタントです。ユーザーの一日の出来事を引き出す短い質問を1つしてください。\n\n")
-        history.takeLast(MAX_TURNS).forEach { m ->
-            val who = if (m.role == ChatRole.USER) "ユーザー" else "アシスタント"
-            append(who).append(": ").append(m.content).append('\n')
-        }
-        append("アシスタント: ")
-    }
-
-    private fun buildReconstructPrompt(events: List<Event>, date: LocalDate): String = buildString {
-        append("以下の出来事メモから、$date の自然な日記を日本語で書いてください。事実を創作しないこと。\n\n")
-        events.forEach { e ->
-            e.time?.let { append("[").append(it).append("] ") }
-            append(e.body.ifBlank { e.title }).append('\n')
-        }
-        append("\n日記:\n")
-    }
 
     /** 初期化済みの場合のみ解放する（未初期化なら何もしない＝無用な初期化をしない）。 */
     fun close() {
@@ -82,6 +65,5 @@ class MediaPipeLlmProvider(
 
     private companion object {
         const val MAX_TOKENS = 1024
-        const val MAX_TURNS = 8
     }
 }

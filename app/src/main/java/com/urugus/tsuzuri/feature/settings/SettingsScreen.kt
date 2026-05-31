@@ -22,7 +22,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.urugus.tsuzuri.core.llm.LlmProviderMode
 
 @Composable
 fun SettingsScreen(
@@ -97,11 +97,10 @@ fun SettingsScreen(
                 )
             }
 
-            // --- オンデバイスAIモデル ---
-            Text("AIモデル（オンデバイス）", style = MaterialTheme.typography.headlineSmall)
+            // --- AIプロバイダ ---
+            Text("AIプロバイダ", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "端末内で動くモデル（MediaPipe LLM の .task）を読み込むと、オフライン・無料でAIを使えます。" +
-                    "未読込のときは簡易モード（定型）で動作します。",
+                "簡易モードは定型応答、端末内AIは読み込んだ .task モデルを使います。クラウドAIは次の実装ステップで追加します。",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -112,14 +111,26 @@ fun SettingsScreen(
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("オンデバイスモデルを使う", style = MaterialTheme.typography.bodyMedium)
-                        Switch(
-                            checked = state.useOnDevice,
-                            onCheckedChange = viewModel::onToggleOnDevice,
-                            enabled = state.modelAvailable,
+                        ProviderModeButton(
+                            text = "簡易",
+                            selected = state.providerMode == LlmProviderMode.STUB,
+                            onClick = { viewModel.onProviderModeSelected(LlmProviderMode.STUB) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        ProviderModeButton(
+                            text = "端末内",
+                            selected = state.providerMode == LlmProviderMode.ON_DEVICE,
+                            onClick = { viewModel.onProviderModeSelected(LlmProviderMode.ON_DEVICE) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        ProviderModeButton(
+                            text = "クラウド",
+                            selected = state.providerMode == LlmProviderMode.CLOUD,
+                            onClick = { viewModel.onProviderModeSelected(LlmProviderMode.CLOUD) },
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (state.importingModel) {
@@ -133,6 +144,24 @@ fun SettingsScreen(
             ) {
                 Text("モデルファイル(.task)を読み込む")
             }
+        }
+    }
+}
+
+@Composable
+private fun ProviderModeButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (selected) {
+        Button(onClick = onClick, modifier = modifier) {
+            Text(text)
+        }
+    } else {
+        OutlinedButton(onClick = onClick, modifier = modifier) {
+            Text(text)
         }
     }
 }

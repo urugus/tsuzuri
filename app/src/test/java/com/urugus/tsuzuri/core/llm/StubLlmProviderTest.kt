@@ -15,7 +15,7 @@ import java.time.ZoneOffset
 class StubLlmProviderTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-05-30T12:00:00Z"), ZoneOffset.UTC)
-    private val provider = StubLlmProvider(clock)
+    private val provider = StubLlmProvider(clock, LlmPromptBuilder())
     private val date = LocalDate.of(2026, 5, 30)
 
     private fun user(text: String) = ChatMessage(ChatRole.USER, text)

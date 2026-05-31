@@ -10,8 +10,9 @@ import javax.inject.Singleton
 /**
  * 設定とモデルの有無に応じて Stub / オンデバイス を切り替える [LlmProvider]。
  *
- * 既定は [StubLlmProvider]。ユーザーが「オンデバイス利用」をONにし、かつモデルが
+ * 既定は [StubLlmProvider]。ユーザーがオンデバイスを選び、かつモデルが
  * [ModelStore] に取り込まれている場合のみ [MediaPipeLlmProvider] を使う。
+ * クラウドは設定の受け皿だけ先に用意し、実装が入るまではStubへフォールバックする。
  * これにより、対応端末が無くてもアプリは常に動作する（コスト0で一周できる）。
  */
 @Singleton
@@ -20,6 +21,7 @@ class RoutingLlmProvider @Inject constructor(
     private val stub: StubLlmProvider,
     private val modelStore: ModelStore,
     private val settings: LlmSettings,
+    private val prompts: LlmPromptBuilder,
 ) : LlmProvider {
 
     private var onDevice: MediaPipeLlmProvider? = null
@@ -31,19 +33,27 @@ class RoutingLlmProvider @Inject constructor(
      */
     @Synchronized
     private fun active(): LlmProvider {
-        if (settings.useOnDevice && modelStore.isAvailable()) {
-            val stamp = modelStore.modelFile.lastModified()
-            val cached = onDevice
-            if (cached != null && stamp == loadedStamp) return cached
-            cached?.close()
-            return MediaPipeLlmProvider(
-                context = context,
-                modelPath = modelStore.modelFile.path,
-                fallback = stub,
-            ).also {
-                onDevice = it
-                loadedStamp = stamp
+        when (settings.providerMode) {
+            LlmProviderMode.ON_DEVICE -> {
+                if (modelStore.isAvailable()) {
+                    val stamp = modelStore.modelFile.lastModified()
+                    val cached = onDevice
+                    if (cached != null && stamp == loadedStamp) return cached
+                    cached?.close()
+                    return MediaPipeLlmProvider(
+                        context = context,
+                        modelPath = modelStore.modelFile.path,
+                        fallback = stub,
+                        prompts = prompts,
+                    ).also {
+                        onDevice = it
+                        loadedStamp = stamp
+                    }
+                }
             }
+            LlmProviderMode.STUB,
+            LlmProviderMode.CLOUD,
+            -> Unit
         }
         // OFF/モデル無し: 確保済みのエンジンがあれば解放してメモリを返す。
         onDevice?.close()
