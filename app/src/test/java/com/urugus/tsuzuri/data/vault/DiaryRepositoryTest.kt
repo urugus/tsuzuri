@@ -94,4 +94,23 @@ class DiaryRepositoryTest {
         val repo = DiaryRepository(FakeVaultStorage())
         assertNull(repo.loadDay(date).events().firstOrNull())
     }
+
+    @Test
+    fun saveRawText_persistsVerbatimAndReparses() = runTest {
+        val storage = FakeVaultStorage()
+        val repo = DiaryRepository(storage)
+        val raw = "---\ndate: 2026-05-30\n---\n\n" +
+            "## 09:00 朝\n<!-- tsuzuri:event id=evt-a; source=manual; time=09:00; created=2026-05-30T09:00:00Z -->\n\n本文\n\n" +
+            "# 手書きメモ\n自由記述。\n"
+
+        repo.saveRawText(date, raw)
+
+        // 生テキストはそのまま保存される
+        assertEquals(raw, storage.files["2026-05-30.md"])
+        assertEquals(raw, repo.loadRawText(date))
+        // 再パースで出来事も認識される（手書き散文は保持）
+        val events = repo.eventsForDay(date)
+        assertEquals(1, events.size)
+        assertEquals("朝", events.single().title)
+    }
 }

@@ -37,6 +37,7 @@ data class DayDetailUiState(
     val busy: Boolean = false,
     val error: String? = null,
     val editing: EventDraft? = null,
+    val rawDraft: String? = null,
 )
 
 @HiltViewModel
@@ -87,7 +88,30 @@ class DayDetailViewModel @Inject constructor(
         }
     }
 
-    fun toggleRaw() = _state.update { it.copy(showRaw = !it.showRaw) }
+    fun toggleRaw() = _state.update { it.copy(showRaw = !it.showRaw, rawDraft = null) }
+
+    // ---- 生Markdown編集 ------------------------------------------------------
+
+    fun startEditRaw() = _state.update { it.copy(rawDraft = it.rawMarkdown) }
+
+    fun updateRawDraft(text: String) = _state.update { it.copy(rawDraft = text) }
+
+    fun cancelRawEdit() = _state.update { it.copy(rawDraft = null) }
+
+    /** 生Markdownをそのまま保存し、再パースして反映する。 */
+    fun saveRaw() {
+        val text = _state.value.rawDraft ?: return
+        viewModelScope.launch {
+            try {
+                vault.repository()?.saveRawText(date, text)
+                    ?: run { _state.update { it.copy(error = "先に設定でVaultフォルダを選んでください") }; return@launch }
+                _state.update { it.copy(rawDraft = null, reconstructed = null, error = null) }
+                load()
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "保存に失敗しました: ${e.message ?: "不明なエラー"}") }
+            }
+        }
+    }
 
     // ---- 手動の出来事編集 ----------------------------------------------------
 

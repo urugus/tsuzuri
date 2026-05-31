@@ -93,12 +93,30 @@ fun DayDetailScreen(
             }
 
             if (state.showRaw) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = state.rawMarkdown.ifBlank { "(空)" },
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        modifier = Modifier.padding(16.dp),
+                val draft = state.rawDraft
+                if (draft == null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = viewModel::startEditRaw) { Text("Markdownを編集") }
+                    }
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = state.rawMarkdown.ifBlank { "(空)" },
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = viewModel::updateRawDraft,
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        label = { Text("生Markdown（直接編集）") },
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = viewModel::saveRaw) { Text("保存") }
+                        OutlinedButton(onClick = viewModel::cancelRawEdit) { Text("キャンセル") }
+                    }
                 }
             } else if (state.events.isEmpty()) {
                 Text("この日の出来事はまだありません。右下の＋で追加できます。", style = MaterialTheme.typography.bodyMedium)

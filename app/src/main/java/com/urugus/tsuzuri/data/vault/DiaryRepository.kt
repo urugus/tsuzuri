@@ -25,6 +25,18 @@ class DiaryRepository(private val storage: VaultStorage) {
         storage.writeText(VaultPaths.fileName(date), document.render())
     }
 
+    /** 当日ファイルの生Markdownを取得（無ければ空）。 */
+    suspend fun loadRawText(date: LocalDate): String =
+        storage.readText(VaultPaths.fileName(date)).orEmpty()
+
+    /**
+     * 生Markdownをそのまま当日ファイルに保存する（ユーザーによる直接編集用）。
+     * テキストの所有者はユーザーなので [DiaryDocument] を介さず保存し、次回の [loadDay] で再パースする。
+     */
+    suspend fun saveRawText(date: LocalDate, text: String) {
+        storage.writeText(VaultPaths.fileName(date), text)
+    }
+
     /** イベントを当日ファイルに upsert して保存し、更新後の文書を返す。 */
     suspend fun upsertEvent(event: Event): DiaryDocument {
         val updated = loadDay(event.date).upsertEvent(event)
