@@ -21,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.urugus.tsuzuri.feature.chat.ChatScreen
 import com.urugus.tsuzuri.feature.settings.SettingsScreen
 import com.urugus.tsuzuri.ui.placeholder.PlaceholderScreen
 
@@ -71,10 +72,7 @@ fun TsuzuriApp() {
                 .padding(innerPadding),
         ) {
             composable(TopDestination.Chat.route) {
-                PlaceholderScreen(
-                    title = "会話モード",
-                    description = "AIと会話しながらその日の出来事を記録します（Phase 1で実装）。",
-                )
+                ChatScreen()
             }
             composable(TopDestination.Timeline.route) {
                 PlaceholderScreen(
