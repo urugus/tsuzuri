@@ -41,19 +41,25 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onFolderSelected(uri: Uri) {
-        vault.setVaultFolder(uri)
+        val ok = vault.setVaultFolder(uri)
+        if (!ok) {
+            _state.update { it.copy(notice = "フォルダの永続アクセス権を取得できませんでした") }
+        }
         refresh()
     }
 
     fun onModelSelected(uri: Uri) {
         viewModelScope.launch {
             _state.update { it.copy(importingModel = true) }
-            val ok = modelStore.importFrom(uri)
+            val ok = try {
+                modelStore.importFrom(uri)
+            } catch (_: Exception) {
+                false
+            } finally {
+                _state.update { it.copy(importingModel = false) }
+            }
             _state.update {
-                it.copy(
-                    importingModel = false,
-                    notice = if (ok) "モデルを読み込みました" else "モデルの読み込みに失敗しました",
-                )
+                it.copy(notice = if (ok) "モデルを読み込みました" else "モデルの読み込みに失敗しました")
             }
             refresh()
         }
@@ -69,7 +75,11 @@ class SettingsViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
-            val days = vault.repository()?.listDays().orEmpty()
+            val days = try {
+                vault.repository()?.listDays().orEmpty()
+            } catch (_: Exception) {
+                emptyList()
+            }
             _state.update {
                 it.copy(
                     folderName = vault.displayName(),

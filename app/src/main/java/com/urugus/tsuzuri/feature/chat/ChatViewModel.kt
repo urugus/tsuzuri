@@ -54,9 +54,13 @@ class ChatViewModel @Inject constructor(
         val afterUser = _state.value.messages + ChatMessage(ChatRole.USER, text)
         _state.update { it.copy(messages = afterUser, input = "", busy = true) }
         viewModelScope.launch {
-            val reply = provider.reply(afterUser)
-            _state.update {
-                it.copy(messages = it.messages + ChatMessage(ChatRole.ASSISTANT, reply), busy = false)
+            try {
+                val reply = provider.reply(afterUser)
+                _state.update { it.copy(messages = it.messages + ChatMessage(ChatRole.ASSISTANT, reply)) }
+            } catch (e: Exception) {
+                _state.update { it.copy(notice = "応答の生成に失敗しました: ${e.message ?: "不明なエラー"}") }
+            } finally {
+                _state.update { it.copy(busy = false) }
             }
         }
     }
@@ -71,17 +75,22 @@ class ChatViewModel @Inject constructor(
         if (_state.value.busy) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
-            val date = LocalDate.now(clock)
-            val events = provider.extractEvents(_state.value.messages, date)
-            events.forEach { repository.upsertEvent(it) }
-            // 保存後は会話をリセットし、同じ内容の二重保存を防ぐ。
-            val greeting = provider.reply(emptyList())
-            _state.update {
-                it.copy(
-                    busy = false,
-                    messages = listOf(ChatMessage(ChatRole.ASSISTANT, greeting)),
-                    notice = "${events.size}件の出来事を $date に保存しました",
-                )
+            try {
+                val date = LocalDate.now(clock)
+                val events = provider.extractEvents(_state.value.messages, date)
+                events.forEach { repository.upsertEvent(it) }
+                // 保存後は会話をリセットし、同じ内容の二重保存を防ぐ。
+                val greeting = provider.reply(emptyList())
+                _state.update {
+                    it.copy(
+                        messages = listOf(ChatMessage(ChatRole.ASSISTANT, greeting)),
+                        notice = "${events.size}件の出来事を $date に保存しました",
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(notice = "保存に失敗しました: ${e.message ?: "不明なエラー"}") }
+            } finally {
+                _state.update { it.copy(busy = false) }
             }
         }
     }

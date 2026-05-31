@@ -69,6 +69,14 @@ fun DayDetailScreen(
                 }
             }
 
+            state.error?.let { err ->
+                Text(
+                    err,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+
             state.reconstructed?.let { prose ->
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {

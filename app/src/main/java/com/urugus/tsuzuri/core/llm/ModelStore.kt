@@ -22,17 +22,37 @@ class ModelStore @Inject constructor(
     private val modelsDir: File = File(context.filesDir, "models").apply { mkdirs() }
 
     val modelFile: File = File(modelsDir, "ondevice-model.task")
+    private val tempFile: File = File(modelsDir, "ondevice-model.task.tmp")
 
     fun isAvailable(): Boolean = modelFile.exists() && modelFile.length() > 0L
 
-    /** ユーザーが選んだモデルファイルをアプリ内にコピーする。成功で true。 */
+    /**
+     * ユーザーが選んだモデルファイルをアプリ内にコピーする。成功で true。
+     *
+     * 一時ファイルにコピーし、完全に書けた場合のみ本ファイルへ置換する（アトミック）。
+     * 途中で失敗しても既存の正常なモデルは壊さず、部分ファイルも残さない。
+     */
     suspend fun importFrom(uri: Uri): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                modelFile.outputStream().use { output -> input.copyTo(output) }
-            } ?: return@runCatching false
-            modelFile.length() > 0L
-        }.getOrDefault(false)
+            tempFile.delete()
+            val wrote = context.contentResolver.openInputStream(uri)?.use { input ->
+                tempFile.outputStream().use { output -> input.copyTo(output) }
+                tempFile.length() > 0L
+            } ?: false
+            if (!wrote) {
+                tempFile.delete()
+                return@runCatching false
+            }
+            // 成功時のみ本ファイルへ置換。
+            if (!tempFile.renameTo(modelFile)) {
+                tempFile.copyTo(modelFile, overwrite = true)
+                tempFile.delete()
+            }
+            true
+        }.getOrElse {
+            tempFile.delete()
+            false
+        }
     }
 
     fun clear() {

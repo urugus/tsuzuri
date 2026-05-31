@@ -45,6 +45,10 @@ class RoutingLlmProvider @Inject constructor(
                 loadedStamp = stamp
             }
         }
+        // OFF/モデル無し: 確保済みのエンジンがあれば解放してメモリを返す。
+        onDevice?.close()
+        onDevice = null
+        loadedStamp = -1L
         return stub
     }
 

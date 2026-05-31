@@ -22,6 +22,7 @@ data class DayDetailUiState(
     val reconstructed: String? = null,
     val showRaw: Boolean = false,
     val busy: Boolean = false,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -42,10 +43,14 @@ class DayDetailViewModel @Inject constructor(
 
     private fun load() {
         viewModelScope.launch {
-            val doc = vault.repository()?.loadDay(date)
-            val events = doc?.events().orEmpty()
-                .sortedWith(compareBy({ it.time ?: LocalTime.MAX }, { it.createdAt }, { it.id }))
-            _state.update { it.copy(events = events, rawMarkdown = doc?.render().orEmpty()) }
+            try {
+                val doc = vault.repository()?.loadDay(date)
+                val events = doc?.events().orEmpty()
+                    .sortedWith(compareBy({ it.time ?: LocalTime.MAX }, { it.createdAt }, { it.id }))
+                _state.update { it.copy(events = events, rawMarkdown = doc?.render().orEmpty(), error = null) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "読み込みに失敗しました: ${e.message ?: "不明なエラー"}") }
+            }
         }
     }
 
@@ -53,9 +58,15 @@ class DayDetailViewModel @Inject constructor(
     fun reconstruct() {
         if (_state.value.busy) return
         viewModelScope.launch {
-            _state.update { it.copy(busy = true) }
-            val text = provider.reconstruct(_state.value.events, date)
-            _state.update { it.copy(busy = false, reconstructed = text) }
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                val text = provider.reconstruct(_state.value.events, date)
+                _state.update { it.copy(reconstructed = text) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "再構成に失敗しました: ${e.message ?: "不明なエラー"}") }
+            } finally {
+                _state.update { it.copy(busy = false) }
+            }
         }
     }
 

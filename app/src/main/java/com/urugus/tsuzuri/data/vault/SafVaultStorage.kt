@@ -28,7 +28,11 @@ class SafVaultStorage(
 
     override suspend fun writeText(fileName: String, content: String) = withContext(Dispatchers.IO) {
         val dir = tree() ?: error("vault フォルダにアクセスできません")
-        val file = dir.findFile(fileName) ?: dir.createFile(MIME_MARKDOWN, fileName)
+        val existing = dir.findFile(fileName)
+        if (existing != null && !existing.isFile) {
+            error("同名のフォルダが存在するため書き込めません: $fileName")
+        }
+        val file = existing ?: dir.createFile(MIME_MARKDOWN, fileName)
             ?: error("ファイル作成に失敗しました: $fileName")
         // "wt" でトラックを切り詰めてから書き込む（古い内容の残留を防ぐ）。
         context.contentResolver.openOutputStream(file.uri, "wt")?.use {
@@ -37,7 +41,8 @@ class SafVaultStorage(
     }
 
     override suspend fun listFileNames(): List<String> = withContext(Dispatchers.IO) {
-        tree()?.listFiles().orEmpty().mapNotNull { it.name }
+        // ファイルのみ（同名ディレクトリを日記ファイルと誤認しないよう除外）。
+        tree()?.listFiles().orEmpty().filter { it.isFile }.mapNotNull { it.name }
     }
 
     override suspend fun delete(fileName: String): Boolean = withContext(Dispatchers.IO) {

@@ -24,16 +24,23 @@ class MediaPipeLlmProvider(
     private val fallback: LlmProvider,
 ) : LlmProvider {
 
-    private val engine: LlmInference by lazy {
-        val options = LlmInference.LlmInferenceOptions.builder()
-            .setModelPath(modelPath)
-            .setMaxTokens(MAX_TOKENS)
-            .build()
-        LlmInference.createFromOptions(context, options)
-    }
+    @Volatile
+    private var engineOrNull: LlmInference? = null
+
+    /** 初回利用時にのみエンジンを生成する（close()では生成しない）。 */
+    private fun engine(): LlmInference =
+        engineOrNull ?: synchronized(this) {
+            engineOrNull ?: LlmInference.createFromOptions(
+                context,
+                LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(modelPath)
+                    .setMaxTokens(MAX_TOKENS)
+                    .build(),
+            ).also { engineOrNull = it }
+        }
 
     override suspend fun reply(history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
-        runCatching { engine.generateResponse(buildChatPrompt(history)) }
+        runCatching { engine().generateResponse(buildChatPrompt(history)) }
             .getOrElse { fallback.reply(history) }
     }
 
@@ -43,7 +50,7 @@ class MediaPipeLlmProvider(
     override suspend fun reconstruct(events: List<Event>, date: LocalDate): String =
         withContext(Dispatchers.IO) {
             if (events.isEmpty()) return@withContext fallback.reconstruct(events, date)
-            runCatching { engine.generateResponse(buildReconstructPrompt(events, date)) }
+            runCatching { engine().generateResponse(buildReconstructPrompt(events, date)) }
                 .getOrElse { fallback.reconstruct(events, date) }
         }
 
@@ -65,8 +72,12 @@ class MediaPipeLlmProvider(
         append("\n日記:\n")
     }
 
+    /** 初期化済みの場合のみ解放する（未初期化なら何もしない＝無用な初期化をしない）。 */
     fun close() {
-        runCatching { engine.close() }
+        synchronized(this) {
+            engineOrNull?.let { runCatching { it.close() } }
+            engineOrNull = null
+        }
     }
 
     private companion object {

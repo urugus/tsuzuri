@@ -33,8 +33,14 @@ class TimelineViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true, vaultConfigured = vault.isConfigured) }
-            val days = vault.repository()?.listDays().orEmpty().sortedDescending()
-            _state.update { it.copy(days = days, loading = false) }
+            try {
+                val days = vault.repository()?.listDays().orEmpty().sortedDescending()
+                _state.update { it.copy(days = days) }
+            } catch (_: Exception) {
+                _state.update { it.copy(days = emptyList()) }
+            } finally {
+                _state.update { it.copy(loading = false) }
+            }
         }
     }
 }
