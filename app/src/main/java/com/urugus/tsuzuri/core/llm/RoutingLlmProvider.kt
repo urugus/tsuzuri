@@ -8,17 +8,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 設定とモデルの有無に応じて Stub / オンデバイス を切り替える [LlmProvider]。
+ * 設定とモデル/APIキーの有無に応じて Stub / オンデバイス / クラウドを切り替える [LlmProvider]。
  *
  * 既定は [StubLlmProvider]。ユーザーがオンデバイスを選び、かつモデルが
  * [ModelStore] に取り込まれている場合のみ [MediaPipeLlmProvider] を使う。
- * クラウドは設定の受け皿だけ先に用意し、実装が入るまではStubへフォールバックする。
  * これにより、対応端末が無くてもアプリは常に動作する（コスト0で一周できる）。
  */
 @Singleton
 class RoutingLlmProvider @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val stub: StubLlmProvider,
+    private val cloud: CloudLlmProvider,
+    private val credentials: CloudCredentialStore,
     private val modelStore: ModelStore,
     private val settings: LlmSettings,
     private val prompts: LlmPromptBuilder,
@@ -51,15 +52,23 @@ class RoutingLlmProvider @Inject constructor(
                     }
                 }
             }
-            LlmProviderMode.STUB,
-            LlmProviderMode.CLOUD,
-            -> Unit
+            LlmProviderMode.CLOUD -> {
+                if (credentials.hasApiKey()) {
+                    releaseOnDevice()
+                    return cloud
+                }
+            }
+            LlmProviderMode.STUB -> Unit
         }
         // OFF/モデル無し: 確保済みのエンジンがあれば解放してメモリを返す。
+        releaseOnDevice()
+        return stub
+    }
+
+    private fun releaseOnDevice() {
         onDevice?.close()
         onDevice = null
         loadedStamp = -1L
-        return stub
     }
 
     override suspend fun reply(history: List<ChatMessage>): String =

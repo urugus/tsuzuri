@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- MVPはローカルファースト。Room派生DB/vault URI/将来のAPIキー等の
          意図しないバックアップ流出を避けるため allowBackup を明示的に無効化。
          クラウド同期/選択的バックアップ導入時に dataExtractionRules で再設計する。 -->
