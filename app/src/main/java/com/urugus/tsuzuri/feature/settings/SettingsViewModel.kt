@@ -9,11 +9,13 @@ import com.urugus.tsuzuri.core.llm.LlmSettings
 import com.urugus.tsuzuri.core.llm.ModelStore
 import com.urugus.tsuzuri.data.vault.VaultManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -99,18 +101,34 @@ class SettingsViewModel @Inject constructor(
     fun saveCloudSettings() {
         val apiKey = _state.value.cloudApiKeyInput.trim()
         val model = _state.value.cloudModel.trim()
-        if (model.isNotEmpty()) {
-            llmSettings.cloudModel = model
-        }
-        if (apiKey.isNotEmpty()) {
-            credentials.saveApiKey(apiKey)
-        }
-        _state.update {
-            it.copy(
-                cloudApiKeyInput = "",
-                cloudApiKeySaved = credentials.hasApiKey(),
-                cloudModel = llmSettings.cloudModel,
-                notice = if (apiKey.isNotEmpty()) "クラウドAI設定を保存しました" else "クラウドAIモデルを保存しました",
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    if (model.isNotEmpty()) {
+                        llmSettings.cloudModel = model
+                    }
+                    if (apiKey.isNotEmpty()) {
+                        credentials.saveApiKey(apiKey)
+                    }
+                    llmSettings.cloudModel to credentials.hasApiKey()
+                }
+            }
+            result.fold(
+                onSuccess = { (cloudModel, cloudApiKeySaved) ->
+                    _state.update {
+                        it.copy(
+                            cloudApiKeyInput = "",
+                            cloudApiKeySaved = cloudApiKeySaved,
+                            cloudModel = cloudModel,
+                            notice = if (apiKey.isNotEmpty()) "クラウドAI設定を保存しました" else "クラウドAIモデルを保存しました",
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _state.update {
+                        it.copy(notice = "クラウドAI設定の保存に失敗しました: ${e.message ?: "不明なエラー"}")
+                    }
+                },
             )
         }
     }

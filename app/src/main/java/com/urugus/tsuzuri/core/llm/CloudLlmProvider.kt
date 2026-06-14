@@ -16,7 +16,7 @@ import javax.inject.Singleton
 @Singleton
 class CloudLlmProvider @Inject constructor(
     private val credentials: CloudCredentialStore,
-    private val settings: LlmSettings,
+    private val settings: CloudModelSettings,
     private val client: CloudChatClient,
     private val prompts: LlmPromptBuilder,
     private val fallback: StubLlmProvider,

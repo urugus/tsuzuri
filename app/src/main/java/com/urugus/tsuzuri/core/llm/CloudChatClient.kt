@@ -22,20 +22,23 @@ class OpenAiChatClient @Inject constructor() : CloudChatClient {
                 setRequestProperty("Authorization", "Bearer $apiKey")
                 setRequestProperty("Content-Type", "application/json")
             }
-            val body = CloudJson.chatCompletionRequest(model = model, prompt = prompt)
-            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            try {
+                val body = CloudJson.chatCompletionRequest(model = model, prompt = prompt)
+                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
 
-            val status = connection.responseCode
-            val response = (if (status in 200..299) connection.inputStream else connection.errorStream)
-                ?.bufferedReader()
-                ?.use { it.readText() }
-                .orEmpty()
-            connection.disconnect()
+                val status = connection.responseCode
+                val response = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader(Charsets.UTF_8)
+                    ?.use { it.readText() }
+                    .orEmpty()
 
-            if (status !in 200..299) {
-                throw IllegalStateException("Cloud AI request failed ($status): ${response.take(ERROR_PREVIEW_MAX)}")
+                if (status !in 200..299) {
+                    throw IllegalStateException("Cloud AI request failed ($status): ${response.take(ERROR_PREVIEW_MAX)}")
+                }
+                CloudJson.assistantContent(response).trim()
+            } finally {
+                connection.disconnect()
             }
-            CloudJson.assistantContent(response).trim()
         }
 
     private companion object {

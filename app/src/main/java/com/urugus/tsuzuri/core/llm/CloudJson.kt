@@ -196,7 +196,7 @@ internal object CloudJson {
 
         private fun parseNumber(): String {
             val start = index
-            while (index < input.length && input[index] !in listOf(',', '}', ']', ' ', '\n', '\r', '\t')) {
+            while (index < input.length && !isValueTerminator(input[index])) {
                 index++
             }
             if (start == index) error("Unexpected character '${input[index]}' at $index")
@@ -214,5 +214,8 @@ internal object CloudJson {
         private fun skipWhitespace() {
             while (index < input.length && input[index].isWhitespace()) index++
         }
+
+        private fun isValueTerminator(ch: Char): Boolean =
+            ch == ',' || ch == '}' || ch == ']' || ch.isWhitespace()
     }
 }

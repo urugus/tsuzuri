@@ -3,7 +3,9 @@ package com.urugus.tsuzuri.di
 import com.urugus.tsuzuri.core.llm.AndroidCloudCredentialStore
 import com.urugus.tsuzuri.core.llm.CloudChatClient
 import com.urugus.tsuzuri.core.llm.CloudCredentialStore
+import com.urugus.tsuzuri.core.llm.CloudModelSettings
 import com.urugus.tsuzuri.core.llm.LlmProvider
+import com.urugus.tsuzuri.core.llm.LlmSettings
 import com.urugus.tsuzuri.core.llm.OpenAiChatClient
 import com.urugus.tsuzuri.core.llm.RoutingLlmProvider
 import dagger.Binds
@@ -34,4 +36,7 @@ abstract class LlmModule {
 
     @Binds
     abstract fun bindCloudChatClient(impl: OpenAiChatClient): CloudChatClient
+
+    @Binds
+    abstract fun bindCloudModelSettings(impl: LlmSettings): CloudModelSettings
 }
