@@ -2,6 +2,7 @@ package com.urugus.tsuzuri.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -29,6 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -100,13 +104,17 @@ fun SettingsScreen(
             // --- AIプロバイダ ---
             Text("AIプロバイダ", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "簡易モードは定型応答、端末内AIは読み込んだ .task モデルを使います。クラウドAIは次の実装ステップで追加します。",
+                "簡易モードは定型応答、端末内AIは読み込んだ .task モデル、クラウドAIは保存したAPIキーでOpenAI Chat Completions APIに接続します。",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         if (state.modelAvailable) "モデル: 読込済み" else "モデル: 未読込",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        if (state.cloudApiKeySaved) "クラウドAPIキー: 保存済み" else "クラウドAPIキー: 未保存",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Row(
@@ -135,6 +143,40 @@ fun SettingsScreen(
                     }
                     if (state.importingModel) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("クラウドAI設定", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(
+                        value = state.cloudModel,
+                        onValueChange = viewModel::onCloudModelChange,
+                        label = { Text("モデル") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = state.cloudApiKeyInput,
+                        onValueChange = viewModel::onCloudApiKeyInputChange,
+                        label = { Text("APIキー") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            autoCorrectEnabled = false,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = viewModel::saveCloudSettings) {
+                            Text("保存")
+                        }
+                        if (state.cloudApiKeySaved) {
+                            OutlinedButton(onClick = viewModel::clearCloudApiKey) {
+                                Text("APIキーを削除")
+                            }
+                        }
                     }
                 }
             }
